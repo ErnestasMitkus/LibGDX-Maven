@@ -5,6 +5,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.audio.Sound;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL30;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
@@ -12,6 +13,7 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Pool;
 import com.badlogic.gdx.utils.TimeUtils;
@@ -31,9 +33,12 @@ public class MyGame implements ApplicationListener {
 
     private BitmapFont font;
     private int dropCount;
+    private boolean missed = false;
+    private String restartQuote = "Press [SPACE] to restart";
+    BitmapFont.TextBounds restartQuoteBounds;
 
     private Sprite bucket;
-    private Pool<Raindrop> raindropPool = new Pool<Raindrop>(3) {
+    private Pool<Raindrop> raindropPool = new Pool<Raindrop>() {
         @Override
         protected Raindrop newObject() {
             return new Raindrop(dropImage);
@@ -53,7 +58,6 @@ public class MyGame implements ApplicationListener {
         camera.translate(400, 320, 0);
 
         font = new BitmapFont();
-        font.scale(1.2f);
 
         dropImage = new Texture(Gdx.files.internal("droplet.png"));
         bucketImage = new Texture(Gdx.files.internal("bucket.png"));
@@ -67,6 +71,9 @@ public class MyGame implements ApplicationListener {
         rainMusic.setLooping(true);
         rainMusic.play();
 
+        font.setScale(2, 2);
+        restartQuoteBounds = new BitmapFont.TextBounds(font.getBounds(restartQuote));
+
         spawnRaindrop();
 	}
 
@@ -79,6 +86,9 @@ public class MyGame implements ApplicationListener {
 		Gdx.gl.glClearColor(0, 0, 0.2f, 0.1f);
 		Gdx.gl.glClear(GL30.GL_COLOR_BUFFER_BIT);
 
+        if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) {
+            restart();
+        }
         elapsed += Gdx.graphics.getDeltaTime();
         updateBucket();
         updateRaindrops();
@@ -90,7 +100,12 @@ public class MyGame implements ApplicationListener {
             raindrop.draw(batch);
         }
         bucket.draw(batch);
+        font.setScale(1.2f, 1.2f);
         font.draw(batch, "Score: " + dropCount, 10, 640 - 10);
+        if (missed) {
+            font.setScale(2, 2);
+            font.draw(batch, restartQuote, 800 / 2 - restartQuoteBounds.width / 2, 640 / 2 + restartQuoteBounds.height / 2);
+        }
         batch.end();
 	}
 
@@ -110,6 +125,7 @@ public class MyGame implements ApplicationListener {
         bucketImage.dispose();
         dropSound.dispose();
         rainMusic.dispose();
+        font.dispose();
         batch.dispose();
 	}
 
@@ -146,14 +162,32 @@ public class MyGame implements ApplicationListener {
             if (raindrop.getY() + raindrop.getHeight() < 0) {
                 each.remove();
                 raindropPool.free(raindrop);
+                if (!missed) {
+                    font.setColor(Color.RED);
+                    missed = true;
+                }
             }
             if (raindrop.getBoundingRectangle().overlaps(bucket.getBoundingRectangle())) {
-                dropSound.play();
-                dropCount++;
-                each.remove();
-                raindropPool.free(raindrop);
+                if (!missed) {
+                    dropSound.play();
+                    dropCount++;
+                    each.remove();
+                    raindropPool.free(raindrop);
+                }
             }
         }
+    }
+
+    private void restart() {
+        lastDropTime = TimeUtils.nanoTime();
+        for (Raindrop raindrop : raindrops) {
+            raindropPool.free(raindrop);
+        }
+        raindrops.clear();
+        dropCount = 0;
+        missed = false;
+        elapsed = 0;
+        font.setColor(Color.WHITE);
     }
 
     private float getDifficultyCoef() {
