@@ -15,7 +15,6 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Pool;
 import com.badlogic.gdx.utils.TimeUtils;
-import com.badlogic.gdx.graphics.Color;
 
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -44,6 +43,8 @@ public class MyGame implements ApplicationListener {
 
     private Vector3 touchPos = new Vector3();
     private long lastDropTime;
+
+    private float elapsed;
 
 	@Override
 	public void create () {
@@ -78,6 +79,7 @@ public class MyGame implements ApplicationListener {
 		Gdx.gl.glClearColor(0, 0, 0.2f, 0.1f);
 		Gdx.gl.glClear(GL30.GL_COLOR_BUFFER_BIT);
 
+        elapsed += Gdx.graphics.getDeltaTime();
         updateBucket();
         updateRaindrops();
         camera.update();
@@ -133,13 +135,14 @@ public class MyGame implements ApplicationListener {
     }
 
     private void updateRaindrops() {
-        if (TimeUtils.nanoTime() - lastDropTime > 1000000000) {
+        if (TimeUtils.nanoTime() - lastDropTime > 1000000000 / getDifficultyCoef()) {
             spawnRaindrop();
         }
         Iterator<Raindrop> each = raindrops.iterator();
         while (each.hasNext()) {
             Raindrop raindrop = each.next();
-            raindrop.translateY(-200 * Gdx.graphics.getDeltaTime());
+            raindrop.update(Gdx.graphics.getDeltaTime());
+            raindrop.translateY(-raindrop.getSpeed() * Gdx.graphics.getDeltaTime() * getDifficultyCoef());
             if (raindrop.getY() + raindrop.getHeight() < 0) {
                 each.remove();
                 raindropPool.free(raindrop);
@@ -151,6 +154,10 @@ public class MyGame implements ApplicationListener {
                 raindropPool.free(raindrop);
             }
         }
+    }
+
+    private float getDifficultyCoef() {
+        return 1 + elapsed / 10;
     }
 
     private void spawnRaindrop() {
