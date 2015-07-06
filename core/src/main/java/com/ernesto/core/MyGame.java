@@ -5,17 +5,17 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.audio.Sound;
-import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.GL30;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Pool;
-import com.badlogic.gdx.utils.Pools;
 import com.badlogic.gdx.utils.TimeUtils;
+import com.badlogic.gdx.graphics.Color;
 
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -29,6 +29,9 @@ public class MyGame implements ApplicationListener {
     private Texture bucketImage;
     private Sound dropSound;
     private Music rainMusic;
+
+    private BitmapFont font;
+    private int dropCount;
 
     private Sprite bucket;
     private Pool<Raindrop> raindropPool = new Pool<Raindrop>(3) {
@@ -47,6 +50,9 @@ public class MyGame implements ApplicationListener {
 		batch = new SpriteBatch();
         camera = new OrthographicCamera(800, 640);
         camera.translate(400, 320, 0);
+
+        font = new BitmapFont();
+        font.scale(1.2f);
 
         dropImage = new Texture(Gdx.files.internal("droplet.png"));
         bucketImage = new Texture(Gdx.files.internal("bucket.png"));
@@ -82,6 +88,7 @@ public class MyGame implements ApplicationListener {
             raindrop.draw(batch);
         }
         bucket.draw(batch);
+        font.draw(batch, "Score: " + dropCount, 10, 640 - 10);
         batch.end();
 	}
 
@@ -139,6 +146,7 @@ public class MyGame implements ApplicationListener {
             }
             if (raindrop.getBoundingRectangle().overlaps(bucket.getBoundingRectangle())) {
                 dropSound.play();
+                dropCount++;
                 each.remove();
                 raindropPool.free(raindrop);
             }
