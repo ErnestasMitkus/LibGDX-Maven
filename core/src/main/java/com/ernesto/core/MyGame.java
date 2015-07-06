@@ -13,6 +13,8 @@ import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.utils.Pool;
+import com.badlogic.gdx.utils.Pools;
 import com.badlogic.gdx.utils.TimeUtils;
 
 import java.util.Iterator;
@@ -29,7 +31,13 @@ public class MyGame implements ApplicationListener {
     private Music rainMusic;
 
     private Sprite bucket;
-    private List<Sprite> raindrops = new LinkedList<Sprite>();
+    private Pool<Raindrop> raindropPool = new Pool<Raindrop>(3) {
+        @Override
+        protected Raindrop newObject() {
+            return new Raindrop(dropImage);
+        }
+    };
+    private List<Raindrop> raindrops = new LinkedList<Raindrop>();
 
     private Vector3 touchPos = new Vector3();
     private long lastDropTime;
@@ -121,24 +129,26 @@ public class MyGame implements ApplicationListener {
         if (TimeUtils.nanoTime() - lastDropTime > 1000000000) {
             spawnRaindrop();
         }
-        Iterator<Sprite> each = raindrops.iterator();
+        Iterator<Raindrop> each = raindrops.iterator();
         while (each.hasNext()) {
-            Sprite raindrop = each.next();
+            Raindrop raindrop = each.next();
             raindrop.translateY(-200 * Gdx.graphics.getDeltaTime());
             if (raindrop.getY() + raindrop.getHeight() < 0) {
                 each.remove();
+                raindropPool.free(raindrop);
             }
             if (raindrop.getBoundingRectangle().overlaps(bucket.getBoundingRectangle())) {
                 dropSound.play();
                 each.remove();
+                raindropPool.free(raindrop);
             }
         }
     }
 
     private void spawnRaindrop() {
-        Sprite sprite = new Sprite(dropImage);
-        sprite.setPosition(MathUtils.random(800 - sprite.getWidth()), 640);
-        raindrops.add(sprite);
+        Raindrop raindrop = raindropPool.obtain();
+        raindrop.setPosition(MathUtils.random(800 - raindrop.getWidth()), 640);
+        raindrops.add(raindrop);
         lastDropTime = TimeUtils.nanoTime();
     }
 
